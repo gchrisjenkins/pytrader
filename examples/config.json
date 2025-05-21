@@ -1,0 +1,48 @@
+{
+  "settings": {
+    "maker_fee": "0.0002",
+    "taker_fee": "0.0005",
+    "funding_interval": 480,
+    "underlying_volatility": 0.001,
+    "step_duration": 1.0,
+    "seed": 42
+  },
+  "account": {
+    "currency": "USDT",
+    "cash_balance": "20000.00"
+  },
+  "markets": [
+    {
+      "symbol": "BTC/USDT",
+      "quote_currency": "USDT",
+      "tick_size": "0.01",
+      "order_increment": "0.002",
+      "initial_price": "82000.00",
+      "volatility": 0.002,
+      "funding_basis_ema_alpha": 0.3,
+      "premium_volatility": 0.0005,
+      "correlation_factor": 0.97,
+      "initial_margin_rate": "0.01",
+      "maintenance_margin_rate": "0.005",
+      "interest_rate": "0.0001",
+      "premium_rate_min": "-0.0005",
+      "premium_rate_max": "0.0005"
+    },
+    {
+      "symbol": "ETH/USDT",
+      "quote_currency": "USDT",
+      "tick_size": "0.01",
+      "order_increment": "0.01",
+      "initial_price": "1700.00",
+      "volatility": 0.003,
+      "funding_basis_ema_alpha": 0.3,
+      "premium_volatility": 0.0005,
+      "correlation_factor": 0.97,
+      "initial_margin_rate": "0.01",
+      "maintenance_margin_rate": "0.005",
+      "interest_rate": "0.0001",
+      "premium_rate_min": "-0.0005",
+      "premium_rate_max": "0.0005"
+    }
+  ]
+}
