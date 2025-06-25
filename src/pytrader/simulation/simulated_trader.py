@@ -1,34 +1,56 @@
-from pytrader import Algorithm, SimulatedExchange
-from pytrader import Trader
+from abc import ABC, abstractmethod
+from typing import Any, cast
+
+from pytrader import Algorithm, Market, Exchange, Trader, Settings
+
+
+class SimulatedMarket(Market, ABC):
+
+    @abstractmethod
+    def step(self, *args, **kwargs) -> dict[str, Any]:
+        pass
+
+
+class SimulatedExchange(Exchange, ABC):
+
+    @abstractmethod
+    def step(self, *args, **kwargs) -> int:
+        pass
+
+    @property
+    def current_step(self):
+        return self._get_current_step()
+
+    @abstractmethod
+    def _get_current_step(self) -> int:
+        pass
 
 
 class SimulatedTrader(Trader[SimulatedExchange]):
 
-    def __init__(self, exchange: SimulatedExchange, algorithm: Algorithm, steps_per_trade: int):
+    def __init__(self, exchange: SimulatedExchange, algorithm: Algorithm):
         super().__init__(exchange, algorithm)
 
-        self._steps_per_trade: int = steps_per_trade
+        step_duration_seconds = cast(Settings, exchange.settings).step_duration_seconds
+        self._steps_per_trade = int(algorithm.trade_interval_seconds / step_duration_seconds)
 
-    def step(self) -> None:
+    def step(self) -> bool:
 
-        while True:
-            current_step = self._exchange.step()
-            if self._algorithm.has_terminated:
-                break
+        current_step = self._exchange.step()
 
-            if current_step % self._steps_per_trade == 0:
-                self._algorithm.on_update(self._exchange)
-                if self._algorithm.is_ready:
-                    self._algorithm.on_trade(self._exchange)
-                break
+        if current_step % self._steps_per_trade == 0:
+            self._algorithm.on_update(self._exchange)
+            if self._algorithm.is_ready:
+                self._algorithm.on_trade(self._exchange)
 
-    def run(self, max_steps: int):
+        if self._algorithm.has_terminated:
+            return True
 
-        self._algorithm.on_startup(self._exchange)
+        return False
 
-        for _ in range(max_steps):
-            self.step()
-            if self._algorithm.has_terminated:
-                break
+    def steps_per_trade(self) -> int:
+        return self._steps_per_trade
 
-        self._algorithm.on_shutdown(self._exchange)
+    @property
+    def current_step(self) -> int:
+        return self._exchange.current_step

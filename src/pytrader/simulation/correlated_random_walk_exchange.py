@@ -9,19 +9,10 @@ from typing import Any
 import numpy as np
 
 from pytrader import (
-    SimulatedExchange, SimulatedMarket, Order, OrderType, OrderSide, OrderStatus, Position, PositionType, Account,
-    Ticker, convert_to_decimal
+    Order, OrderType, OrderSide, OrderStatus, Position, PositionType, Account, Ticker, convert_to_decimal, Settings
 )
+from pytrader.simulation import SimulatedExchange, SimulatedMarket
 
-
-@dataclasses.dataclass
-class Settings:
-    maker_fee: Decimal
-    taker_fee: Decimal
-    funding_interval: int
-    underlying_volatility: float
-    step_duration: float
-    seed: int = 42
 
 
 class CorrelatedRandomWalkMarket(SimulatedMarket):
@@ -355,8 +346,9 @@ class CorrelatedRandomWalkExchange(SimulatedExchange):
         cls = type(self)
         self._logger: logging.Logger = logging.getLogger(f"{cls.__module__}.{cls.__name__}")
 
-        # --- Validate and create settings ---
-        self._settings: Settings = self._validate_and_create_settings(config)
+        settings: Settings = type(self)._validate_and_create_settings(config)
+
+        super().__init__(settings)
 
         # --- Validate and create account ---
         self._account: Account = self._validate_and_create_account(config)
@@ -369,6 +361,8 @@ class CorrelatedRandomWalkExchange(SimulatedExchange):
 
         # Use the global seed for the exchange's underlying RNG
         self._underlying_rng = np.random.default_rng(self._settings.seed)
+
+        self._update_account()
 
     def step(self, *args, **kwargs) -> int:
         """
@@ -658,15 +652,15 @@ class CorrelatedRandomWalkExchange(SimulatedExchange):
 
     def _calculate_available_margin(self) -> Decimal:
         """
-        Calculate the available margin: equity - initial margin requirement.
+        Calculate the available margin: equity - (initial margin requirement + reserved margin requirement).
         """
         equity = self._calculate_equity()
         initial_margin_req = self._calculate_initial_margin_requirement()
         # Also consider margin reserved for open orders
-        reserved_limit_margin = self._calculate_reserved_margin_requirement()
+        reserved_margin_req = self._calculate_reserved_margin_requirement()
 
-        # Available margin is equity minus margin used by positions AND reserved by orders
-        return equity - initial_margin_req - reserved_limit_margin
+        # Available margin is equity minus margin used by positions AND reserved by limit orders
+        return equity - (initial_margin_req + reserved_margin_req)
 
     @staticmethod
     def _validate_and_create_settings(config: dict) -> Settings:
@@ -701,7 +695,7 @@ class CorrelatedRandomWalkExchange(SimulatedExchange):
                 taker_fee=taker_fee,
                 funding_interval=funding_interval,
                 underlying_volatility=underlying_volatility,
-                step_duration=step_duration,
+                step_duration_seconds=step_duration,
                 seed=seed
             )
         except (KeyError, ValueError, TypeError) as e:

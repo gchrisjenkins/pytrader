@@ -1,34 +1,69 @@
 from decimal import Decimal
 from typing import Any
 
-from pytrader import Algorithm, OrderSide, Exchange, IndicatorDefType, ExponentialMovingAverage, PositionType
+from pytrader import Algorithm, OrderSide, Exchange, ExponentialMovingAverage, PositionType, \
+    Duration, TimeUnit, PriceEMA
 
 
 class SimpleAlgorithm(Algorithm):
 
-    def __init__(self, symbol: str, currency: str):
-        super().__init__()
+    def __init__(self, currency: str, symbol: str, trade_interval_seconds: int):
+        super().__init__(currency, symbol, trade_interval_seconds, None)
 
-        self._symbol: str = symbol
-        self._currency: str = currency
+        cls = type(self)
+        self._logger: logging.Logger = logging.getLogger(f"{cls.__module__}.{cls.__name__}")
 
         self._has_terminated: bool = False
         self._state: dict[str, Any] = dict()
         self._action: dict[str, Any] = dict()
 
-    def _build_indicator_defs(self) -> dict[str, IndicatorDefType]:
+    def _build(self):
 
-        defs = {
-            "price_ema_60": (
-                ExponentialMovingAverage(60),
-                lambda exchange: (float(exchange.get_ticker(self._symbol).last_price),),
-                0
-            )
-        }
-        return defs
+        symbol = self.symbols[0]
+
+        price_ema_5 = PriceEMA(symbol, 5)
+        self._add_indicator("price_ema_5", price_ema_5, 0)
+
+        price_ema_15 = PriceEMA(symbol, 15)
+        self._add_indicator("price_ema_15", price_ema_15, 1)
+
+        price_ema_60 = PriceEMA(symbol, 60)
+        self._add_indicator("price_ema_60", price_ema_60, 2)
+
+        # self._add_indicator(
+        #     "price_ema_5",
+        #     ExponentialMovingAverage(5, lambda exchange: (float(exchange.get_ticker(self.symbols[0]).last_price),)),
+        #     # lambda exchange: (float(exchange.get_ticker(self.symbols[0]).last_price),),
+        #     0
+        # )
+        #
+        # self._add_indicator(
+        #     "price_ema_15",
+        #     ExponentialMovingAverage(15, lambda exchange: (float(exchange.get_ticker(self.symbols[0]).last_price),)),
+        #     # lambda exchange: (float(exchange.get_ticker(self.symbols[0]).last_price),),
+        #     0
+        # )
+        #
+        # self._add_indicator(
+        #     "price_ema_60",
+        #     ExponentialMovingAverage(60, lambda exchange: (float(exchange.get_ticker(self.symbols[0]).last_price),)),
+        #     # lambda exchange: (float(exchange.get_ticker(self.symbols[0]).last_price),),
+        #     0
+        # )
+
+    # def _build_indicator_defs(self) -> dict[str, IndicatorDefType]:
+    #
+    #     defs = {
+    #         "price_ema_60": (
+    #             ExponentialMovingAverage(60),
+    #             lambda exchange: (float(exchange.get_ticker(self.symbols[0]).last_price),),
+    #             0
+    #         )
+    #     }
+    #     return defs
 
     def _get_is_ready(self) -> bool:
-        return all([self._get_indicator(key).is_valid() for key in self._indicator_defs.keys()])
+        return all([indicator.is_valid for indicator in self._indicators.values()])
 
     def _get_has_terminated(self) -> bool:
         return self._has_terminated
@@ -40,31 +75,66 @@ class SimpleAlgorithm(Algorithm):
         return self._action
 
     def on_startup(self, exchange: Exchange):
-        print(f"[{self.__class__.__name__}] Startup for symbol {self._symbol}.")
+
+        self._logger.debug(f"Startup of algorithm for currency {self.currency} and symbol {self.symbols[0]}.")
+
+        self._logger.debug("Initial account details:")
+
+        account = exchange.get_account(self.currency)
+        ticker = exchange.get_ticker(self.symbols[0])
+
+        self._logger.debug(f"  {self.symbols[0]} price = {ticker.last_price}")
+        self._logger.debug(f"  Cash balance = {account.cash_balance}")
+        self._logger.debug(f"  Unrealized P&L = {account.unrealized_pnl}")
+        self._logger.debug(f"  Equity = {account.equity}")
+        self._logger.debug(f"  Realized P&L = {account.realized_pnl}")
+        self._logger.debug(f"  Available margin = {account.available_margin}")
+        self._logger.debug(f"  Initial margin requirement = {account.initial_margin_requirement}")
+        self._logger.debug(f"  Maintenance margin requirement = {account.maintenance_margin_requirement}")
+        self._logger.debug(f"  Reserved margin requirement = {account.reserved_margin_requirement}")
 
     def on_shutdown(self, exchange: Exchange):
-        account = exchange.get_account(self._currency)
-        print(f"[{self.__class__.__name__}] Shutdown for symbol {self._symbol}. Final Equity: {account.equity:.2f}")
+
+        self._logger.debug(f"Shutdown of algorithm for currency {self.currency} and symbol {self.symbols[0]}.")
+
+        self._logger.debug("Final account details:")
+
+        account = exchange.get_account(self.currency)
+        ticker = exchange.get_ticker(self.symbols[0])
+
+        self._logger.debug(f"  {self.symbols[0]} price = {ticker.last_price}")
+        self._logger.debug(f"  Cash balance = {account.cash_balance}")
+        self._logger.debug(f"  Unrealized P&L = {account.unrealized_pnl}")
+        self._logger.debug(f"  Equity = {account.equity}")
+        self._logger.debug(f"  Realized P&L = {account.realized_pnl}")
+        self._logger.debug(f"  Available margin = {account.available_margin}")
+        self._logger.debug(f"  Initial margin requirement = {account.initial_margin_requirement}")
+        self._logger.debug(f"  Maintenance margin requirement = {account.maintenance_margin_requirement}")
+        self._logger.debug(f"  Reserved margin requirement = {account.reserved_margin_requirement}")
 
     def on_trade(self, exchange: Exchange):
 
-        ticker = exchange.get_ticker(self._symbol)
-        price_ema_60 = Decimal(str(self._get_indicator("price_ema_60").value))
+        account = exchange.get_account(self._currency)
 
-        current_position = exchange.get_account(self._currency).get_position(self._symbol, PositionType.NET)
+        ticker = exchange.get_ticker(self.symbols[0])
+        price_ema_60 = Decimal(str(self.get_indicator("price_ema_60").value))
+
+        current_position = account.get_position(self.symbols[0], PositionType.NET)
         position_quantity = current_position.quantity if current_position else Decimal("0")
 
-        print(
-            f"Symbol: {self._symbol}, Last Price: {ticker.last_price:.2f}, EMA(60): {price_ema_60:.2f}, "
+        self._logger.debug(
+            f"Symbol: {self.symbols[0]}, Last Price: {ticker.last_price:.2f}, EMA(60): {price_ema_60:.2f}, "
             f"Position: {position_quantity}"
         )
 
-        if ticker.last_price > Decimal("1.02") * price_ema_60:
-            print(f"  SELL signal: {ticker.last_price:.2f} > 1.02 * {price_ema_60:.2f}. Placing SELL order.")
-            exchange.create_market_order(self._symbol, OrderSide.SELL, Decimal(".5"))
-        elif ticker.last_price < Decimal("0.98") * price_ema_60:
-            print(f"  BUY signal: {ticker.last_price:.2f} < 0.98 * {price_ema_60:.2f}. Placing BUY order.")
-            exchange.create_market_order(self._symbol, OrderSide.BUY, Decimal(".5"))
+        if ticker.last_price > Decimal("1.02") * price_ema_60 and position_quantity >= Decimal("0"):
+            self._logger.debug(
+                f"--> SELL signal: {ticker.last_price:.2f} > 1.02 * {price_ema_60:.2f}. Placing SELL order."
+            )
+            exchange.create_market_order(self.symbols[0], OrderSide.SELL, Decimal(".5"))
+        elif ticker.last_price < Decimal("0.98") * price_ema_60 and position_quantity <= Decimal("0"):
+            self._logger.debug(f"--> BUY signal: {ticker.last_price:.2f} < 0.98 * {price_ema_60:.2f}. Placing BUY order.")
+            exchange.create_market_order(self.symbols[0], OrderSide.BUY, Decimal(".5"))
 
 
 if __name__ == "__main__":
@@ -72,7 +142,7 @@ if __name__ == "__main__":
     import logging
     import json
 
-    from pytrader.simulation import CorrelatedRandomWalkExchange, SimulatedTrader
+    from pytrader.simulation import CorrelatedRandomWalkExchange, SimulatedTrader, TradingSimulator
 
     logging.basicConfig(
         level=logging.DEBUG,
@@ -80,45 +150,28 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S"
     )
 
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    logging.getLogger("requests").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("plotly").setLevel(logging.WARNING)
+    logging.getLogger("Qt").setLevel(logging.WARNING)
+
     with open("config.json", 'r') as f:
         config = json.load(f)
 
-    # Initialize the exchange with the loaded configuration
     exchange = CorrelatedRandomWalkExchange(config)
 
-    symbol_to_trade = "BTC/USDT"
     currency = "USDT"
+    symbol_to_trade = "BTC/USDT"
 
-    algorithm = SimpleAlgorithm(symbol=symbol_to_trade, currency=currency)
+    algorithm = SimpleAlgorithm(currency=currency, symbol=symbol_to_trade, trade_interval_seconds=60)
 
-    step_duration_seconds = config["settings"].get("step_duration", 1.0)
-    steps_per_minute = int(60 / step_duration_seconds)
-    trader = SimulatedTrader(exchange, algorithm, steps_per_trade=steps_per_minute)
+    trader = SimulatedTrader(exchange, algorithm)
 
-    sim_duration_hours = 24
-    total_seconds_in_duration = sim_duration_hours * 60 * 60
-    max_steps = int(total_seconds_in_duration / step_duration_seconds)
+    # simulation_duration_hours = 2
+    # simulation_duration_seconds = simulation_duration_hours * 60 * 60
+    simulation_duration = Duration(2, time_unit=TimeUnit.HOUR)
+    # max_steps = max(1, int(simulation_duration_seconds / exchange.settings.step_duration_seconds) - 1)
 
-    logging.info(f"Starting simulation for {sim_duration_hours} hours ({max_steps} steps)...")
-
-    initial_account_state = exchange.get_account(currency)
-    logging.info(f"Initial Account State: Cash: {initial_account_state.cash_balance}, Equity: {initial_account_state.equity}")
-
-    trader.run(max_steps=max_steps)
-
-    account = exchange.get_account(currency)
-
-    # Display final account state
-    print("Final account state:")
-    ticker = exchange.get_ticker('BTC/USDT')
-    print(f"  '{symbol_to_trade}' price = {ticker.last_price}")
-    print(f"  Cash balance = {account.cash_balance}")
-    print(f"  Unrealized P&L = {account.unrealized_pnl}")
-    print(f"  Equity = {account.equity}")
-    print(f"  Realized P&L = {account.realized_pnl}")
-    print(f"  Available margin = {account.available_margin}")
-    print(f"  Initial margin requirement = {account.initial_margin_requirement}")
-    print(f"  Maintenance margin requirement = {account.maintenance_margin_requirement}")
-    print(f"  Reserved margin requirement = {account.reserved_margin_requirement}")
-
-    logging.info("Simulation finished.")
+    simulator = TradingSimulator(trader, max_duration=simulation_duration, is_viewer_enabled=True)
+    simulator.run()
