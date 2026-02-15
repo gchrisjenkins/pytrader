@@ -1,14 +1,14 @@
 import copy
 import logging
-import queue
 import threading
 import time
 from datetime import timedelta
 
 from dashqt import EmbeddedDashApplicationListener, EmbeddedDashApplication
-from pytrader.ui import TradingViewer, TraderViewConfiguration, TraderViewDataUpdate, Ohlc
-from pytrader import TimeUnit, Duration
+# from pytrader import TimeUnit, Duration
+from pytrader.exchange import TimeUnit, Duration
 from pytrader.simulation import SimulatedTrader
+from pytrader.viewer import TradingViewer, TraderViewConfiguration, TraderViewDataUpdate
 
 
 class TradingSimulator(EmbeddedDashApplicationListener):
@@ -58,7 +58,7 @@ class TradingSimulator(EmbeddedDashApplicationListener):
                 self._viewer = TradingViewer(
                     listener=self,
                     config=TraderViewConfiguration(
-                        algorithm_name=self._trader.algorithm.name,
+                        strategy_name=self._trader.algorithm.name,
                         symbols=self._trader.algorithm.symbols,
                         currency=self._trader.algorithm.currency,
                         max_duration=self._max_duration,
@@ -212,7 +212,7 @@ class TradingSimulator(EmbeddedDashApplicationListener):
         updates = []
         for symbol in self._trader.algorithm.symbols:
 
-            last_price = self._trader.exchange.get_ticker(symbol).last_price
+            last_price = self._trader.exchange.get_market_snapshot(symbol).last_price
 
             if (current_step - 1) % steps_per_candle == 0:
                 self._viewer_data[symbol] = {

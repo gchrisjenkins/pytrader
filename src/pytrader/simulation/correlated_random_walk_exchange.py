@@ -1,5 +1,4 @@
 import copy
-import dataclasses
 import logging
 import math
 import uuid
@@ -8,11 +7,10 @@ from typing import Any
 
 import numpy as np
 
-from pytrader import (
-    Order, OrderType, OrderSide, OrderStatus, Position, PositionType, Account, Ticker, convert_to_decimal, Settings
+from pytrader.exchange import (
+    Order, OrderType, OrderSide, OrderStatus, Position, PositionMode, Account, MarketSnapshot, convert_to_decimal
 )
 from pytrader.simulation import SimulatedExchange, SimulatedMarket
-
 
 
 class CorrelatedRandomWalkMarket(SimulatedMarket):
@@ -346,7 +344,7 @@ class CorrelatedRandomWalkExchange(SimulatedExchange):
         cls = type(self)
         self._logger: logging.Logger = logging.getLogger(f"{cls.__module__}.{cls.__name__}")
 
-        settings: Settings = type(self)._validate_and_create_settings(config)
+        settings: SimulatedExchange.Settings = type(self)._validate_and_create_settings(config)
 
         super().__init__(settings)
 
@@ -384,9 +382,9 @@ class CorrelatedRandomWalkExchange(SimulatedExchange):
     def _get_current_step(self) -> int:
         return self._current_step
 
-    def get_ticker(self, symbol: str) -> Ticker:
+    def get_market_snapshot(self, symbol: str) -> MarketSnapshot:
         market = self._get_market(symbol)
-        return Ticker(
+        return MarketSnapshot(
             symbol=symbol, last_price=market.last_price, mark_price=market.mark_price, index_price=market.index_price,
             funding_rate=market.funding_rate
         )
@@ -449,9 +447,9 @@ class CorrelatedRandomWalkExchange(SimulatedExchange):
         PositionType.NET.
         """
         _ = self._get_market(symbol)
-        if self._account.get_position(symbol, PositionType.NET) is None:
+        if self._account.get_position(symbol, PositionMode.NET) is None:
             self._account.add_position(Position(symbol))
-        return self._account.get_position(symbol, PositionType.NET)
+        return self._account.get_position(symbol, PositionMode.NET)
 
     def _execute_order(self, order: Order) -> Order:
         """
@@ -663,7 +661,7 @@ class CorrelatedRandomWalkExchange(SimulatedExchange):
         return equity - (initial_margin_req + reserved_margin_req)
 
     @staticmethod
-    def _validate_and_create_settings(config: dict) -> Settings:
+    def _validate_and_create_settings(config: dict) -> SimulatedExchange.Settings:
         try:
             settings_data = config.get("settings")
             if not settings_data:
@@ -690,7 +688,7 @@ class CorrelatedRandomWalkExchange(SimulatedExchange):
                 raise ValueError("step_duration must be positive")
             seed = int(settings_data.get("seed", 42))
 
-            return Settings(
+            return SimulatedExchange.Settings(
                 maker_fee=maker_fee,
                 taker_fee=taker_fee,
                 funding_interval=funding_interval,

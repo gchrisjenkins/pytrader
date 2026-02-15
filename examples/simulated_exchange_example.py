@@ -25,16 +25,16 @@ def main(config: dict[str, Any]):
 
         if step == 1:
             # Step 0: Display the current state of the exchange
-            btc_ticker = exchange.get_ticker('BTC/USDT')
-            eth_ticker = exchange.get_ticker('ETH/USDT')
+            btc_ticker = exchange.get_market_snapshot('BTC/USDT')
+            eth_ticker = exchange.get_market_snapshot('ETH/USDT')
             print(
                 f"Step {step}: BTC price = {btc_ticker.last_price}, ETH price = {eth_ticker.last_price}, "
                 f"Cash balance = {account.cash_balance}"
             )
 
         elif step == 2:
-            btc_ticker = exchange.get_ticker('BTC/USDT')
-            eth_ticker = exchange.get_ticker('ETH/USDT')
+            btc_ticker = exchange.get_market_snapshot('BTC/USDT')
+            eth_ticker = exchange.get_market_snapshot('ETH/USDT')
             print(
                 f"Step {step}: BTC price = {btc_ticker.last_price}, ETH price = {eth_ticker.last_price}, "
                 f"Cash balance = {account.cash_balance}"
@@ -45,8 +45,8 @@ def main(config: dict[str, Any]):
             print(f"Market orders created: BTC buy @ {btc_buy_order.price}, ETH buy @ {eth_buy_order.price}")
 
         elif step == 3:
-            btc_ticker = exchange.get_ticker('BTC/USDT')
-            eth_ticker = exchange.get_ticker('ETH/USDT')
+            btc_ticker = exchange.get_market_snapshot('BTC/USDT')
+            eth_ticker = exchange.get_market_snapshot('ETH/USDT')
             print(
                 f"Step {step}: BTC price = {btc_ticker.last_price}, ETH price = {eth_ticker.last_price}, "
                 f"Cash balance = {account.cash_balance}"
@@ -83,8 +83,8 @@ def main(config: dict[str, Any]):
 
         # Optional: Print price updates every 100 steps
         if step % 100 == 0 and step > 0:
-            btc_ticker = exchange.get_ticker('BTC/USDT')
-            eth_ticker = exchange.get_ticker('ETH/USDT')
+            btc_ticker = exchange.get_market_snapshot('BTC/USDT')
+            eth_ticker = exchange.get_market_snapshot('ETH/USDT')
             print(f"Step {step}: BTC price = {btc_ticker.last_price}, ETH price = {eth_ticker.last_price}")
             print(f"  Cash balance = {account.cash_balance}")
             print(f"  Unrealized P&L = {account.unrealized_pnl}")
@@ -106,8 +106,8 @@ def main(config: dict[str, Any]):
 
     # Display final account state
     print("Final account state:")
-    btc_ticker = exchange.get_ticker('BTC/USDT')
-    eth_ticker = exchange.get_ticker('ETH/USDT')
+    btc_ticker = exchange.get_market_snapshot('BTC/USDT')
+    eth_ticker = exchange.get_market_snapshot('ETH/USDT')
     print(f"Step {step}: BTC price = {btc_ticker.last_price}, ETH price = {eth_ticker.last_price}")
     print(f"  Cash balance = {account.cash_balance}")
     print(f"  Unrealized P&L = {account.unrealized_pnl}")

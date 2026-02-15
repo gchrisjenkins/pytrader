@@ -1,8 +1,8 @@
 from decimal import Decimal
 from typing import Any
 
-from pytrader import Algorithm, OrderSide, Exchange, ExponentialMovingAverage, PositionType, \
-    Duration, TimeUnit, PriceEMA
+from pytrader import Algorithm, PriceEMA
+from pytrader.exchange import Duration, TimeUnit, OrderSide, PositionMode, Exchange
 
 
 class SimpleAlgorithm(Algorithm):
@@ -81,7 +81,7 @@ class SimpleAlgorithm(Algorithm):
         self._logger.debug("Initial account details:")
 
         account = exchange.get_account(self.currency)
-        ticker = exchange.get_ticker(self.symbols[0])
+        ticker = exchange.get_market_snapshot(self.symbols[0])
 
         self._logger.debug(f"  {self.symbols[0]} price = {ticker.last_price}")
         self._logger.debug(f"  Cash balance = {account.cash_balance}")
@@ -100,7 +100,7 @@ class SimpleAlgorithm(Algorithm):
         self._logger.debug("Final account details:")
 
         account = exchange.get_account(self.currency)
-        ticker = exchange.get_ticker(self.symbols[0])
+        ticker = exchange.get_market_snapshot(self.symbols[0])
 
         self._logger.debug(f"  {self.symbols[0]} price = {ticker.last_price}")
         self._logger.debug(f"  Cash balance = {account.cash_balance}")
@@ -116,10 +116,10 @@ class SimpleAlgorithm(Algorithm):
 
         account = exchange.get_account(self._currency)
 
-        ticker = exchange.get_ticker(self.symbols[0])
+        ticker = exchange.get_market_snapshot(self.symbols[0])
         price_ema_60 = Decimal(str(self.get_indicator("price_ema_60").value))
 
-        current_position = account.get_position(self.symbols[0], PositionType.NET)
+        current_position = account.get_position(self.symbols[0], PositionMode.NET)
         position_quantity = current_position.quantity if current_position else Decimal("0")
 
         self._logger.debug(
